@@ -1,0 +1,1 @@
+All infrastructure defined in single "main.tf" file. Providers defined in "provider.tf" file. Backend defined in "backend.hcl" file and contain settings for "S3" storage in AWS cloud (for storing "state" file) and DynameDB in AWS cloud for storing "lock" status.
