@@ -1,0 +1,30 @@
+---
+- name: "deploy app"
+  hosts: hexlet-trial
+  remote_user: admin
+  vars_files:
+    - ansible_vars.yaml
+  tasks:
+    - name: "install docker"
+      tags: docker
+      become: true
+      ansible.builtin.apt:
+        name: "docker.io"
+        state: present
+        update_cache: true
+    - name: "prepare db info to pass to app"
+      tags: deploy
+      ansible.builtin.include_vars:
+        file: "db_info.json"
+        name: "docker_vars"
+    - name: "Pull and run docker image"
+      tags: deploy
+      become: "true"
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}"
+        pull: "always"
+        restart_policy: "unless-stopped"
+        state: "started"
+        published_ports: "{{ ports }}"
+        env: "{{ docker_vars }}"

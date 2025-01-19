@@ -1,0 +1,4 @@
+---
+container_name: 'my_app'
+image_name: 'xycainoff/rudimentary:latest'
+ports: '["80:5000"]'

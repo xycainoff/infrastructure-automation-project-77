@@ -5,15 +5,13 @@ locals {
     https_port = 443
     protocol = "tcp"
     all_cidr_block = "0.0.0.0/0"
-    root_domain = "xycainoff.link."
-    cloudinit_packages = templatefile("${path.module}/cloudinit-packages.yaml.tftpl", {
-        package = "nginx"
-    })
 }
 
 ### Domain and HTTPS certificate
+variable "root_domain" {}
+
 data "aws_route53_zone" "my_domain" {
-    name = local.root_domain
+    name = var.root_domain
 }
 
 resource "aws_route53_record" "lb" {
@@ -73,19 +71,9 @@ data "aws_subnets" "default" {
     }
 }
 
-data "cloudinit_config" "install_nginx" {
-    gzip = false
-    base64_encode = true
-    part {
-        content_type = "text/cloud-config"
-        content = local.cloudinit_packages
-        merge_type = "list(append)+dict(recurse_list)"
-    }
-}
-
 ### Security Groups for use with VMs and Load Balancer
 resource "aws_security_group" "lb" {
-    name = "Allow outcoming and incoming HTTPS traffic"
+    name = "LB_Security_Group"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_https" {
@@ -103,7 +91,7 @@ resource "aws_vpc_security_group_egress_rule" "allow_egress_lb" {
 }
 
 resource "aws_security_group" "vm" {
-    name = "Allow incoming HTTP, SSH and outcoming traffic"
+    name = "VM_Security_Group"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
@@ -128,6 +116,16 @@ resource "aws_vpc_security_group_egress_rule" "allow_egress_vm" {
     cidr_ipv4 = local.all_cidr_block
 }
 
+resource "aws_security_group" "db" {
+    name = "DB_Security_Group"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ingress_from_vm" {
+    security_group_id = aws_security_group.db.id
+    referenced_security_group_id = aws_security_group.vm.id
+    ip_protocol = "-1"
+}
+
 ### VMs
 resource "aws_instance" "hexlet-trial" {
     ami        = "ami-0584590e5f0e97daa"
@@ -135,7 +133,10 @@ resource "aws_instance" "hexlet-trial" {
     count = 2
     vpc_security_group_ids = [aws_security_group.vm.id]
     key_name = aws_key_pair.xycainoff.id
-    user_data_base64 = data.cloudinit_config.install_nginx.rendered
+}
+
+output "VMs_addresses" {
+    value = aws_instance.hexlet-trial[*].public_ip
 }
 
 ### Load Balancer
@@ -170,10 +171,6 @@ resource "aws_lb_target_group_attachment" "hexlet-trial" {
     target_id = each.value.id
 }
 
-output "lb_address" {
-    value = aws_lb.hexlet-trial.dns_name
-}
-
 ### DB managed by AWS
 variable "db_username" {
     sensitive = true
@@ -183,13 +180,31 @@ variable "db_password" {
     sensitive = true
 }
 
+variable "db_engine" {}
+
+variable "db_name" {}
+
 resource "aws_db_instance" "hexlet-trial" {
+    vpc_security_group_ids = [aws_security_group.db.id]
     skip_final_snapshot = true
     identifier_prefix = "hexlet-trial"
     instance_class = "db.t4g.micro"
-    engine = "postgres"
+    engine = var.db_engine
     allocated_storage = 5
-    db_name = "hexlet_trial"
+    db_name = var.db_name
     username = var.db_username
     password = var.db_password
+}
+
+resource "local_file" "db_info" {
+    content = jsonencode({
+        "DB_TYPE" = aws_db_instance.hexlet-trial.engine
+        "DB_NAME" = aws_db_instance.hexlet-trial.db_name
+        "DB_HOST" = aws_db_instance.hexlet-trial.address
+        "DB_PORT" = tostring(aws_db_instance.hexlet-trial.port)
+        "DB_USER" = aws_db_instance.hexlet-trial.username
+        "DB_PASS" = var.db_password
+    })
+    filename = "${path.module}/../ansible/db_info.json"
+    file_permission = "0444"
 }
