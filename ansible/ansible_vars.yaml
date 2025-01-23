@@ -1,0 +1,8 @@
+---
+container_name: 'dumb_app'
+image_name: 'xycainoff/rudimentary:latest'
+ports: '["80:5000"]'
+timer_name: "upmon"
+service_description: "Upmon curl every minute"
+service_exec: "/usr/bin/curl {{ upmon_custom_url }} --silent --output /dev/null"
+timer_on_calendar: "*:0/1"

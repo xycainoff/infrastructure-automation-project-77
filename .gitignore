@@ -1,12 +1,10 @@
-#ansible variables
-ansible_vars.yaml
-
 #secrets
 *secret*
-#generated DB info
+
+#auto-generated DB info
 db_info.json
 
-#hosts file for Ansible
+#auto-generated hosts file for Ansible
 hosts.ini
 
 .DS_Store
