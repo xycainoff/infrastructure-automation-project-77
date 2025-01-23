@@ -1,3 +1,6 @@
+#ansible variables
+ansible_vars.yaml
+
 #secrets
 *secret*
 #generated DB info

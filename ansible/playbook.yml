@@ -48,6 +48,36 @@
         group: "dd-agent"
         mode: "u=rw,g=r,o=r"
         src: "http_check_conf.yaml"
+    - name: "configure systemd service for timer"
+      become: true
+      tags: "systemd"
+      ansible.builtin.template:
+        dest: "/etc/systemd/system/{{ timer_name }}.service"
+        src: "curl_job.service.j2"
+        owner: "root"
+        group: "root"
+        mode: "u=rw,g=r,o=r"
+    - name: "configure systemd timer"
+      become: true
+      tags: "systemd"
+      ansible.builtin.template:
+        dest: "/etc/systemd/system/{{ timer_name }}.timer"
+        src: "curl_job.timer.j2"
+        owner: "root"
+        group: "root"
+        mode: "u=rw,g=r,o=r"
+    - name: "reload systemd"
+      become: true
+      tags: "systemd"
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+    - name: "enable timer"
+      become: true
+      tags: "systemd"
+      ansible.builtin.systemd_service:
+        name: "{{ timer_name }}.timer"
+        enabled: true
+        state: "started"
   handlers:
     - name: "restart datadog agent"
       become: true
