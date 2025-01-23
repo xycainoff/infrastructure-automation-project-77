@@ -1,25 +1,34 @@
 ---
 - name: "deploy app"
-  hosts: hexlet-trial
-  remote_user: admin
+  hosts: "hexlet-trial"
+  remote_user: "admin"
   vars_files:
     - ansible_vars.yaml
+    - ansible_secrets.yaml
   tasks:
+    - name: "install datadog agent"
+      tags: "datadog"
+      become: true
+      import_role:
+        name: "datadog.dd.agent"
+      vars:
+        datadog_site: "datadoghq.eu"
+        datadog_api_key: "{{ DATADOG_API_KEY }}"
     - name: "install docker"
-      tags: docker
+      tags: "docker"
       become: true
       ansible.builtin.apt:
         name: "docker.io"
         state: present
         update_cache: true
     - name: "prepare db info to pass to app"
-      tags: deploy
+      tags: "deploy"
       ansible.builtin.include_vars:
         file: "db_info.json"
         name: "docker_vars"
     - name: "Pull and run docker image"
-      tags: deploy
-      become: "true"
+      tags: "deploy"
+      become: true
       community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ image_name }}"
@@ -28,3 +37,20 @@
         state: "started"
         published_ports: "{{ ports }}"
         env: "{{ docker_vars }}"
+    - name: "configure custom datadog check"
+      become: true
+      tags: "datadog_custom"
+      notify:
+        - "restart datadog agent"
+      ansible.builtin.template:
+        dest: "/etc/datadog-agent/conf.d/http_check.d/conf.yaml"
+        owner: "dd-agent"
+        group: "dd-agent"
+        mode: "u=rw,g=r,o=r"
+        src: "http_check_conf.yaml"
+  handlers:
+    - name: "restart datadog agent"
+      become: true
+      ansible.builtin.service:
+        name: "datadog-agent"
+        state: "restarted"

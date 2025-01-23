@@ -1,0 +1,8 @@
+---
+init_config:
+
+instances:
+    - name: "HTTP check of dumb_app"
+      url: "http://localhost:80/"
+      timeout: 2
+      min_collection_interval: 5

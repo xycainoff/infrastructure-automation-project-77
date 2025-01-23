@@ -208,3 +208,21 @@ resource "local_file" "db_info" {
     filename = "${path.module}/../ansible/db_info.json"
     file_permission = "0444"
 }
+
+### Datadog
+variable "datadog_api_key" {
+    sensitive = true
+}
+
+variable "datadog_app_key" {
+    sensitive = true
+}
+
+variable "alert_email" {}
+
+resource "datadog_monitor" "dumbapp" {
+    name = "dumbapp monitor"
+    type = "metric alert"
+    message = "http responce time getting high @${var.alert_email}"
+    query = "avg(last_2m):avg:network.http.response_time{instance:http_check_of_dumb_app} > 0.007"
+}
