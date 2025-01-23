@@ -1,5 +1,14 @@
+#secrets
+*secret*
+#generated DB info
+db_info.json
+
+#hosts file for Ansible
+hosts.ini
+
 .DS_Store
 .swp
+
 # Local .terraform directories
 **/.terraform/*
 
